@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Letter — A Debt Story</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300;1,600&family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080806;
+  --paper:#f2ece0;
+  --muted:#8a8070;
+  --faint:rgba(242,236,224,0.08);
+  --red:#c1392b;--red2:#e85d4a;--red-glow:rgba(193,57,43,0.18);
+  --green:#2d6a4f;--green2:#52b788;--green-glow:rgba(82,183,136,0.15);
+  --violet:#5c4fc4;--violet2:#9b8fe8;--violet-glow:rgba(92,79,196,0.18);
+  --amber:#c87d2a;--amber2:#f0a84a;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Syne',sans-serif;color:var(--paper)}
+
+/* ─── CANVAS BG ─── */
+#bgCanvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* ─── GRAIN ─── */
+#grain{position:fixed;inset:0;z-index:998;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:256px;opacity:0.04;mix-blend-mode:overlay}
+
+/* ─── SCENES ─── */
+.scene{position:fixed;inset:0;z-index:1;display:flex;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.9s cubic-bezier(0.4,0,0.2,1)}
+.scene.active{opacity:1;pointer-events:all}
+
+/* ─── SCENE 0: TITLE ─── */
+#s0{flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.t-eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:6px;
+  text-transform:uppercase;color:var(--muted);margin-bottom:32px;
+  opacity:0;animation:riseIn 1s 0.4s forwards}
+.t-main{font-family:'Cormorant Garamond',serif;font-size:clamp(72px,11vw,130px);
+  line-height:0.92;font-weight:600;color:var(--paper);
+  opacity:0;animation:riseIn 1s 0.7s forwards}
+.t-main em{font-style:italic;font-weight:300;color:rgba(242,236,224,0.5)}
+.t-divider{width:1px;height:60px;background:linear-gradient(to bottom,transparent,var(--muted),transparent);
+  margin:36px auto;opacity:0;animation:riseIn 1s 1s forwards}
+.t-sub{font-family:'Cormorant Garamond',serif;font-size:clamp(16px,2vw,22px);
+  font-weight:300;font-style:italic;color:rgba(242,236,224,0.6);
+  max-width:500px;line-height:1.7;
+  opacity:0;animation:riseIn 1s 1.1s forwards}
+.t-btn{margin-top:52px;display:inline-flex;align-items:center;gap:16px;
+  background:transparent;border:1px solid rgba(242,236,224,0.25);
+  color:var(--paper);padding:18px 44px;font-family:'Syne',sans-serif;
+  font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+  cursor:pointer;transition:all 0.4s;
+  opacity:0;animation:riseIn 1s 1.4s forwards}
+.t-btn:hover{background:var(--paper);color:var(--bg);border-color:var(--paper);
+  box-shadow:0 0 60px rgba(242,236,224,0.15);transform:translateY(-2px)}
+.t-btn .arrow{transition:transform 0.3s}
+.t-btn:hover .arrow{transform:translateX(6px)}
+.t-corner{position:absolute;font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:rgba(255,255,255,0.12);letter-spacing:2px}
+.t-corner.tl{top:32px;left:40px}
+.t-corner.tr{top:32px;right:40px;text-align:right}
+.t-corner.bl{bottom:32px;left:40px}
+.t-corner.br{bottom:32px;right:40px;text-align:right}
+
+/* ─── STORY LAYOUT ─── */
+.story{display:grid;grid-template-columns:1fr 1fr;height:100vh;width:100%}
+.viz{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.viz canvas{position:absolute;inset:0;width:100%;height:100%}
+.txt{display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(40px,6vh,80px) clamp(40px,5vw,72px);
+  overflow-y:auto;scrollbar-width:none;position:relative;z-index:2}
+.txt::-webkit-scrollbar{display:none}
+
+/* ─── TEXT ELEMENTS ─── */
+.chap{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:4px;
+  text-transform:uppercase;color:var(--muted);margin-bottom:18px;
+  display:flex;align-items:center;gap:14px}
+.chap::after{content:'';flex:1;height:1px;
+  background:linear-gradient(to right,currentColor,transparent);opacity:0.25}
+
+.stitle{font-family:'Cormorant Garamond',serif;
+  font-size:clamp(36px,4.5vw,58px);line-height:1.05;
+  font-weight:600;margin-bottom:24px}
+.stitle em{font-style:italic;font-weight:300;opacity:0.65}
+.stitle b{font-weight:600}
+
+.narr{border-left:2px solid;padding:16px 20px;margin-bottom:28px;
+  border-radius:0 6px 6px 0;
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(16px,1.8vw,20px);line-height:1.75;font-weight:300;font-style:italic}
+
+.rows{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:16px;align-items:flex-start;
+  opacity:0;transform:translateX(20px);
+  transition:all 0.5s cubic-bezier(0.4,0,0.2,1)}
+.scene.active .row:nth-child(1){opacity:1;transform:none;transition-delay:0.5s}
+.scene.active .row:nth-child(2){opacity:1;transform:none;transition-delay:0.65s}
+.scene.active .row:nth-child(3){opacity:1;transform:none;transition-delay:0.8s}
+.scene.active .row:nth-child(4){opacity:1;transform:none;transition-delay:0.95s}
+.dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:2px}
+.rowtxt{font-family:'Cormorant Garamond',serif;font-size:clamp(16px,1.7vw,19px);
+  line-height:1.65;font-weight:300}
+.rowtxt strong{font-weight:600}
+
+.hbox{margin-top:24px;padding:20px 24px;border-radius:4px;
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(16px,1.8vw,20px);line-height:1.65;font-weight:300;
+  text-align:center;border:1px solid;
+  opacity:0;transition:all 0.6s 1.1s;transform:translateY(10px)}
+.scene.active .hbox{opacity:1;transform:none}
+
+/* scene-specific colors */
+.scene.active .chap,.scene.active .stitle,.scene.active .narr,
+.scene.active .rowtxt{opacity:1;transform:none}
+.chap,.stitle,.narr,.rowtxt{opacity:0;transform:translateY(12px);
+  transition:opacity 0.6s cubic-bezier(0.4,0,0.2,1),transform 0.6s cubic-bezier(0.4,0,0.2,1)}
+.scene.active .chap{transition-delay:0.1s}
+.scene.active .stitle{transition-delay:0.2s}
+.scene.active .narr{transition-delay:0.35s}
+
+/* letter card */
+.lcard{background:rgba(240,234,218,0.06);border:1px solid rgba(240,234,218,0.12);
+  border-left:3px solid var(--red);border-radius:0 6px 6px 0;
+  padding:18px 20px;margin-bottom:18px;
+  font-family:'JetBrains Mono',monospace;font-size:clamp(11px,1.2vw,13px);line-height:1.9;
+  opacity:0;transition:all 0.6s 0.45s;transform:translateY(8px)}
+.scene.active .lcard{opacity:1;transform:none}
+.scare{background:rgba(193,57,43,0.2);color:#f09080;
+  border-radius:3px;padding:1px 5px;display:inline}
+
+/* sol grid */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;
+  opacity:0;transition:all 0.6s 0.5s;transform:translateY(8px)}
+.scene.active .sgrid{opacity:1;transform:none}
+.scard{padding:18px 20px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);
+  background:rgba(255,255,255,0.03)}
+.scard h4{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;opacity:0.7}
+.scard p{font-family:'Cormorant Garamond',serif;font-size:clamp(15px,1.6vw,17px);
+  line-height:1.6;font-weight:300;opacity:0.75}
+
+/* transform */
+.tfrow{display:flex;gap:12px;align-items:stretch;margin-bottom:18px;
+  opacity:0;transition:all 0.6s 0.45s}
+.scene.active .tfrow{opacity:1}
+.tbox{flex:1;padding:16px 18px;border-radius:6px;border:1px solid;
+  font-family:'JetBrains Mono',monospace;font-size:clamp(11px,1.1vw,13px);line-height:1.75}
+.tbox .tlabel{font-size:9px;letter-spacing:2px;text-transform:uppercase;opacity:0.5;margin-bottom:8px}
+.tbox.tbefore{background:rgba(193,57,43,0.08);border-color:rgba(193,57,43,0.25);color:#f09080}
+.tbox.tafter{background:rgba(82,183,136,0.08);border-color:rgba(82,183,136,0.3);color:#90d8b8}
+.tbox.tafter strong{color:#52b788}
+.tarr{display:flex;align-items:center;font-size:22px;color:var(--violet2);padding:0 4px;flex-shrink:0}
+
+/* ─── NAV ─── */
+#nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
+  height:80px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 48px;
+  background:linear-gradient(to top,rgba(8,8,6,0.9) 0%,transparent 100%);
+  pointer-events:none}
+.nbtn{pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.12);color:var(--paper);
+  width:48px;height:48px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;transition:all 0.25s;backdrop-filter:blur(12px)}
+.nbtn:hover{background:rgba(255,255,255,0.14);transform:scale(1.1)}
+.nbtn:disabled{opacity:0.15;pointer-events:none}
+.pipcont{pointer-events:all;display:flex;gap:6px;align-items:center}
+.pip{height:3px;border-radius:99px;background:rgba(255,255,255,0.2);
+  transition:all 0.45s cubic-bezier(0.4,0,0.2,1);cursor:pointer}
+.pip.done{width:16px;background:rgba(255,255,255,0.4)}
+.pip.cur{width:40px;background:var(--paper)}
+.pip.upcoming{width:8px}
+
+/* ─── PROGRESS LINE ─── */
+#progline{position:fixed;top:0;left:0;height:2px;z-index:200;
+  background:linear-gradient(to right,var(--red2),var(--violet2),var(--green2));
+  transition:width 0.6s cubic-bezier(0.4,0,0.2,1);width:0%}
+
+/* ─── KEYFRAMES ─── */
+@keyframes riseIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulseRing{0%{transform:scale(1);opacity:0.5}100%{transform:scale(2.2);opacity:0}}
+@keyframes countUp{from{opacity:0}to{opacity:1}}
+@keyframes dash{to{stroke-dashoffset:0}}
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+<div id="grain"></div>
+<div id="progline"></div>
+
+<!-- ══ S0: TITLE ══ -->
+<div class="scene active" id="s0">
+  <div class="t-corner tl">AI SOCIETY — 2025</div>
+  <div class="t-corner tr">DEBT COMMUNICATION</div>
+  <div class="t-corner bl">INTERACTIVE STORY</div>
+  <div class="t-corner br">7 CHAPTERS</div>
+  <div class="t-eyebrow">A debt communication story</div>
+  <div class="t-main">The<br><em>Letter</em></div>
+  <div class="t-divider"></div>
+  <div class="t-sub">One document. Four broken systems.<br>And the solution that fixes them — before it's too late.</div>
+  <button class="t-btn" onclick="goTo(1)">
+    Begin the story
+    <span class="arrow">→</span>
+  </button>
+</div>
+
+<!-- ══ S1: MEET EMMA ══ -->
+<div class="scene story" id="s1">
+  <div class="viz" id="v1"></div>
+  <div class="txt" style="background:linear-gradient(to right,rgba(20,10,8,0) 0%,rgba(14,8,6,0.97) 18%)">
+    <div class="chap">Chapter 01 — The Letter</div>
+    <div class="stitle">Meet Emma.<br><em>She's terrified.</em></div>
+    <div class="narr" style="border-color:var(--red2);background:rgba(193,57,43,0.07);color:#f0c8c0">
+      Every year, millions receive formal debt letters they cannot understand. Emma is one of them — two jobs, kids, and today something arrived that will define the next 45 days of her life.
+    </div>
+    <div class="lcard">
+      <span style="opacity:0.5;font-size:10px;letter-spacing:2px">AANMANING — REF: 2024-INC-09471</span><br><br>
+      Het openstaande bedrag van <span class="scare">€ 2.341,88</span> dient uiterlijk<br>
+      <span class="scare">12 november 2024</span> te worden voldaan.<br>
+      Bij niet-betaling worden <span class="scare">gerechtelijke stappen</span><br>
+      ondernomen en <span class="scare">buitengerechtelijke incassokosten</span><br>
+      in rekening gebracht conform de WIK...
+    </div>
+    <div class="rows">
+      <div class="row">
+        <div class="dot" style="background:rgba(193,57,43,0.2);color:#e87b6b">?</div>
+        <div class="rowtxt">Emma doesn't know what <em>incassobureau</em> means, who to call, or whether she needs a lawyer.</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(193,57,43,0.2);color:#e87b6b">→</div>
+        <div class="rowtxt"><strong>She puts the letter in a drawer.</strong> "I'll deal with it later."</div>
+      </div>
+    </div>
+    <div class="hbox" style="border-color:rgba(193,57,43,0.3);background:rgba(193,57,43,0.07);color:#f0c8c0">
+      The letter is legally correct. Emma cannot act on it.<br>That gap <em>is</em> the entire problem.
+    </div>
+  </div>
+</div>
+
+<!-- ══ S2: THE SPIRAL ══ -->
+<div class="scene story" id="s2">
+  <div class="viz" id="v2"></div>
+  <div class="txt" style="background:linear-gradient(to right,rgba(20,8,6,0) 0%,rgba(14,6,6,0.97) 18%)">
+    <div class="chap">Chapter 02 — The Spiral</div>
+    <div class="stitle">Avoidance is<br><em>expensive.</em></div>
+    <div class="narr" style="border-color:var(--red2);background:rgba(193,57,43,0.07);color:#f0c8c0">
+      When people don't understand, they delay. And delay, in the debt system, costs money that compounds automatically, invisibly, and relentlessly.
+    </div>
+    <div class="rows">
+      <div class="row">
+        <div class="dot" style="background:rgba(193,57,43,0.2);color:#e87b6b">1</div>
+        <div class="rowtxt"><strong>Day 1:</strong> Letter arrives. Panic. Goes in the drawer.</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(193,57,43,0.2);color:#e87b6b">2</div>
+        <div class="rowtxt"><strong>Day 8:</strong> Reminder letter — <strong style="color:#e87b6b">+ €40 fee</strong> added automatically.</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(193,57,43,0.2);color:#e87b6b">3</div>
+        <div class="rowtxt"><strong>Day 20:</strong> Deadline passes. Debt lawyer steps in. <strong style="color:#e87b6b">+ €285 legal costs.</strong></div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(193,57,43,0.2);color:#e87b6b">4</div>
+        <div class="rowtxt"><strong>Day 45:</strong> Emma finally asks for help. Far too late. Far more expensive.</div>
+      </div>
+    </div>
+    <div class="hbox" style="border-color:rgba(193,57,43,0.35);background:rgba(193,57,43,0.08);color:#f0c8c0">
+      €2,341 became <span id="counter2" style="font-family:'JetBrains Mono',monospace;font-size:1.2em;color:#e85d4a;font-weight:700">€2,666</span> — not from irresponsibility.<br>From <em>confusion.</em>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S3: FATIMA ══ -->
+<div class="scene story" id="s3">
+  <div class="viz" id="v3"></div>
+  <div class="txt" style="background:linear-gradient(to right,rgba(8,8,20,0) 0%,rgba(6,6,16,0.97) 18%)">
+    <div class="chap">Chapter 03 — The Caseworker</div>
+    <div class="stitle">Meet Fatima.<br><em>She's drowning.</em></div>
+    <div class="narr" style="border-color:var(--violet2);background:rgba(92,79,196,0.08);color:#c8bef0">
+      Help organisations exist exactly for moments like Emma's. But the professionals inside them face a different crisis — not short on expertise, but buried in paperwork a machine could handle in seconds.
+    </div>
+    <div class="rows">
+      <div class="row">
+        <div class="dot" style="background:rgba(92,79,196,0.2);color:#9b8fe8">✕</div>
+        <div class="rowtxt">Emma arrives with a bag of letters — torn, photographed, mixed with old receipts.</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(92,79,196,0.2);color:#9b8fe8">✕</div>
+        <div class="rowtxt">Fatima spends <strong>47 minutes</strong> sorting: who is the creditor? what's the real deadline? is this in legal process yet?</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(92,79,196,0.2);color:#9b8fe8">✕</div>
+        <div class="rowtxt"><strong>4 other clients wait outside.</strong> Two have court dates tomorrow.</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(92,79,196,0.2);color:#9b8fe8">✕</div>
+        <div class="rowtxt">Fatima is brilliant at helping people. Right now the system is using her as a document scanner.</div>
+      </div>
+    </div>
+    <div class="hbox" style="border-color:rgba(92,79,196,0.3);background:rgba(92,79,196,0.07);color:#c8bef0">
+      Every hour spent reading letters = one hour <em>not</em> spent helping people.
+    </div>
+  </div>
+</div>
+
+<!-- ══ S4: THE SYSTEM ══ -->
+<div class="scene story" id="s4">
+  <div class="viz" id="v4"></div>
+  <div class="txt" style="background:linear-gradient(to right,rgba(8,8,20,0) 0%,rgba(6,6,16,0.97) 18%)">
+    <div class="chap">Chapter 04 — The System</div>
+    <div class="stitle">Everyone loses.<br><em>Unnecessarily.</em></div>
+    <div class="narr" style="border-color:var(--violet2);background:rgba(92,79,196,0.08);color:#c8bef0">
+      Emma's story is the default outcome of a system built for legal correctness, not human understanding. The cost radiates outward — touching people who never even saw the letter.
+    </div>
+    <div class="rows">
+      <div class="row">
+        <div class="dot" style="background:rgba(92,79,196,0.2);color:#9b8fe8">↑</div>
+        <div class="rowtxt"><strong>Creditors</strong> spend on reminders, lawyers and collection agencies — for debts resolvable in week one with a simple payment plan.</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(92,79,196,0.2);color:#9b8fe8">↑</div>
+        <div class="rowtxt"><strong>Governments</strong> absorb the downstream cost: courts, emergency social aid, healthcare strain from financial anxiety.</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(92,79,196,0.2);color:#9b8fe8">!</div>
+        <div class="rowtxt">The root cause is not unwillingness. It is <strong>one letter — written for lawyers, received by humans.</strong></div>
+      </div>
+    </div>
+    <div class="hbox" style="border-color:rgba(92,79,196,0.3);background:rgba(92,79,196,0.07);color:#c8bef0">
+      The law is compliant.<br>The communication has <em>failed.</em><br>These are not the same thing.
+    </div>
+  </div>
+</div>
+
+<!-- ══ S5: SOLUTION ══ -->
+<div class="scene story" id="s5">
+  <div class="viz" id="v5"></div>
+  <div class="txt" style="background:linear-gradient(to right,rgba(6,16,10,0) 0%,rgba(5,12,8,0.97) 18%)">
+    <div class="chap">Chapter 05 — Our Solution</div>
+    <div class="stitle">One tool.<br><em>Everyone benefits.</em></div>
+    <div class="narr" style="border-color:var(--green2);background:rgba(82,183,136,0.07);color:#a8dfc0">
+      We sit at the very beginning of this process. We transform unreadable legal documents into clear, structured, actionable information. The same facts. A completely different outcome.
+    </div>
+    <div class="tfrow">
+      <div class="tbox tbefore">
+        <div class="tlabel">Original letter</div>
+        "...buitengerechtelijke incassokosten conform de WIK... gerechtelijke stappen ondernomen... Incassobureau Delta BV namens Energiemaatschappij Noord NV..."
+      </div>
+      <div class="tarr">→</div>
+      <div class="tbox tafter">
+        <div class="tlabel">With our tool</div>
+        You owe <strong>€2,341</strong> to your energy company.<br>Pay by <strong>Nov 12</strong>.<br>A payment plan is possible.
+      </div>
+    </div>
+    <div class="sgrid">
+      <div class="scard"><h4 style="color:#52b788">For Debtors</h4><p>Plain language. What you owe, to whom, by when — and what options you have.</p></div>
+      <div class="scard"><h4 style="color:#9b8fe8">For Caseworkers</h4><p>Structured data instantly. Deadlines visible in seconds, not 47 minutes.</p></div>
+      <div class="scard"><h4 style="color:#80b4e8">For Creditors</h4><p>More responses. Earlier payment plans. Less legal cost and escalation.</p></div>
+      <div class="scard"><h4 style="color:#e8c878">For Governments</h4><p>Earlier intervention. Scalable oversight. Fewer cases reaching courts.</p></div>
+    </div>
+    <div class="hbox" style="border-color:rgba(82,183,136,0.3);background:rgba(82,183,136,0.06);color:#a8dfc0;margin-top:16px">
+      We don't replace human judgment.<br>We eliminate what <em>should never have required</em> human judgment.
+    </div>
+  </div>
+</div>
+
+<!-- ══ S6: EPILOGUE ══ -->
+<div class="scene story" id="s6">
+  <div class="viz" id="v6"></div>
+  <div class="txt" style="background:linear-gradient(to right,rgba(6,16,10,0) 0%,rgba(5,12,8,0.97) 18%)">
+    <div class="chap">Epilogue — The Story Rewritten</div>
+    <div class="stitle">Emma's story,<br><em>with our tool.</em></div>
+    <div class="narr" style="border-color:var(--green2);background:rgba(82,183,136,0.07);color:#a8dfc0">
+      This is not optimism. It is arithmetic. When people understand what they're being asked — and professionals focus on helping rather than decoding — outcomes are measurably, demonstrably better. Every time.
+    </div>
+    <div class="rows">
+      <div class="row">
+        <div class="dot" style="background:rgba(82,183,136,0.2);color:#52b788">✓</div>
+        <div class="rowtxt"><strong>Day 1:</strong> Letter arrives. Our tool shows Emma a plain summary. She understands immediately. No panic.</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(82,183,136,0.2);color:#52b788">✓</div>
+        <div class="rowtxt"><strong>Day 2:</strong> She contacts a help org. Fatima sees structured data and spends her time advising — not decoding.</div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(82,183,136,0.2);color:#52b788">✓</div>
+        <div class="rowtxt"><strong>Day 5:</strong> A realistic payment plan is arranged directly. <strong style="color:#52b788">No extra costs. No court. No escalation.</strong></div>
+      </div>
+      <div class="row">
+        <div class="dot" style="background:rgba(82,183,136,0.2);color:#52b788">✓</div>
+        <div class="rowtxt">Total debt stays at <strong style="color:#52b788;font-family:'JetBrains Mono',monospace">€2,341</strong>. Everyone saves time, money, and stress.</div>
+      </div>
+    </div>
+    <div class="hbox" style="border-color:rgba(82,183,136,0.4);background:rgba(82,183,136,0.08);color:#a8dfc0;font-size:clamp(18px,2vw,24px);font-style:italic;padding:28px 32px;font-family:'Cormorant Garamond',serif">
+      This is what we are building.<br><em>Clarity, at the moment it matters most.</em>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NAV ══ -->
+<div id="nav">
+  <button class="nbtn" id="btnB" onclick="goTo(cur-1)" disabled>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="pipcont" id="pips"></div>
+  <button class="nbtn" id="btnN" onclick="goTo(cur+1)">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// GLOBAL PARTICLE / CANVAS ENGINE
+// ═══════════════════════════════════════════════
+const bgC = document.getElementById('bgCanvas');
+const bgX = bgC.getContext('2d');
+let W,H;
+function resize(){W=bgC.width=innerWidth;H=bgC.height=innerHeight}
+resize(); addEventListener('resize',resize);
+
+// Floating particles
+const PARTS=[];
+for(let i=0;i<80;i++) PARTS.push({
+  x:Math.random()*2000,y:Math.random()*1200,
+  vx:(Math.random()-0.5)*0.18,vy:(Math.random()-0.5)*0.12,
+  r:Math.random()*1.4+0.3,a:Math.random()
+});
+
+function drawBg(){
+  bgX.clearRect(0,0,W,H);
+  PARTS.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=W;if(p.x>W)p.x=0;
+    if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+    bgX.beginPath();bgX.arc(p.x,p.y,p.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(242,236,224,${p.a*0.06})`;bgX.fill();
+  });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ═══════════════════════════════════════════════
+// PER-SCENE CANVAS ANIMATIONS
+// ═══════════════════════════════════════════════
+
+// ── Scene 1: Emma + floating letter ──────────────
+function initV1(){
+  const el=document.getElementById('v1');
+  el.innerHTML='';
+  const c=document.createElement('canvas');
+  el.appendChild(c);
+  const ctx=c.getContext('2d');
+  let raf,t=0;
+  function sz(){c.width=el.offsetWidth;c.height=el.offsetHeight}
+  sz();
+  const obs=new ResizeObserver(sz);obs.observe(el);
+
+  // Particles (stress dots)
+  const ps=Array.from({length:40},()=>({
+    x:Math.random()*c.width,y:Math.random()*c.height,
+    vx:(Math.random()-0.5)*0.4,vy:(Math.random()-0.5)*0.4,
+    r:Math.random()*2+0.5,life:Math.random()
+  }));
+
+  function draw(){
+    const W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H);
+    t+=0.016;
+
+    // Ambient glow
+    const grd=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.5);
+    grd.addColorStop(0,'rgba(193,57,43,0.08)');
+    grd.addColorStop(1,'transparent');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
+
+    // Stress particles
+    ps.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.life+=0.005;
+      if(p.x<0||p.x>W)p.vx*=-1;
+      if(p.y<0||p.y>H)p.vy*=-1;
+      const a=Math.sin(p.life)*0.4+0.1;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(193,57,43,${a})`;ctx.fill();
+    });
+
+    // Floating letter
+    const lx=W/2, ly=H/2+Math.sin(t*0.8)*14;
+    const lw=200,lh=150;
+    // shadow
+    ctx.shadowColor='rgba(193,57,43,0.3)';ctx.shadowBlur=30;
+    ctx.fillStyle='rgba(240,234,218,0.06)';
+    ctx.strokeStyle='rgba(193,57,43,0.5)';ctx.lineWidth=1;
+    roundRect(ctx,lx-lw/2,ly-lh/2,lw,lh,6);
+    ctx.fill();ctx.stroke();
+    ctx.shadowBlur=0;
+
+    // Letter header stripe
+    ctx.fillStyle='rgba(193,57,43,0.2)';
+    roundRect(ctx,lx-lw/2,ly-lh/2,lw,22,{tl:6,tr:6,bl:0,br:0});ctx.fill();
+    ctx.fillStyle='rgba(230,100,80,0.8)';
+    ctx.font='bold 9px JetBrains Mono, monospace';
+    ctx.textAlign='center';
+    ctx.fillText('AANMANING — URGENT',lx,ly-lh/2+14);
+
+    // Letter lines
+    const lines=[
+      {w:0.7,c:'rgba(240,180,170,0.5)'},
+      {w:0.55,c:'rgba(240,180,170,0.3)'},
+      {w:0.6,c:'rgba(240,180,170,0.4)'},
+      {w:0.45,c:'rgba(240,180,170,0.25)'},
+      {w:0.65,c:'rgba(240,180,170,0.35)'},
+    ];
+    lines.forEach((l,i)=>{
+      ctx.fillStyle=l.c;
+      const lly=ly-lh/2+36+i*16;
+      ctx.fillRect(lx-lw*0.4,lly,lw*l.w,5);
+    });
+    // Scary red highlights
+    ctx.fillStyle='rgba(193,57,43,0.35)';
+    ctx.fillRect(lx-lw*0.4,ly-lh/2+36,lw*0.4,5);
+    ctx.fillStyle='rgba(193,57,43,0.3)';
+    ctx.fillRect(lx-lw*0.1,ly-lh/2+52,lw*0.3,5);
+
+    // Warning ring
+    const rr=Math.sin(t)*0.3+0.7;
+    ctx.beginPath();ctx.arc(lx,ly,90+Math.sin(t*1.2)*5,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(193,57,43,${0.08*rr})`;ctx.lineWidth=1;ctx.stroke();
+    ctx.beginPath();ctx.arc(lx,ly,70,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(193,57,43,${0.05*rr})`;ctx.lineWidth=1;ctx.stroke();
+
+    // Emma silhouette
+    drawPerson(ctx,lx,ly+100,32,'rgba(210,160,120,0.9)','worried');
+
+    // Speech bubble
+    const bx=lx+60,by=ly-80;
+    ctx.fillStyle='rgba(193,57,43,0.12)';
+    ctx.strokeStyle='rgba(193,57,43,0.4)';ctx.lineWidth=1;
+    roundRect(ctx,bx,by,160,44,8);ctx.fill();ctx.stroke();
+    ctx.fillStyle='rgba(193,57,43,0.4)';
+    ctx.beginPath();ctx.moveTo(bx+10,by+44);ctx.lineTo(bx-12,by+56);ctx.lineTo(bx+22,by+44);ctx.fill();
+    ctx.fillStyle='rgba(230,150,130,0.9)';
+    ctx.font='11px Cormorant Garamond, serif';ctx.textAlign='left';
+    ctx.fillText('"Is this a lawsuit??"',bx+12,by+18);
+    ctx.fillText('I don\'t understand this…',bx+12,by+34);
+
+    raf=requestAnimationFrame(draw);
+  }
+  draw();
+  return ()=>{cancelAnimationFrame(raf);obs.disconnect()};
+}
+
+// ── Scene 2: Spiral debt counter ─────────────────
+function initV2(){
+  const el=document.getElementById('v2');
+  el.innerHTML='';
+  const c=document.createElement('canvas');
+  el.appendChild(c);
+  const ctx=c.getContext('2d');
+  let raf,t=0,startTime=null;
+  function sz(){c.width=el.offsetWidth;c.height=el.offsetHeight}
+  sz();
+  const obs=new ResizeObserver(sz);obs.observe(el);
+
+  const nodes=[
+    {label:'Day 1',sub:'Letter — Panic',amount:2341,color:'rgba(193,57,43,0.8)'},
+    {label:'Day 8',sub:'+ €40 fee',amount:2381,color:'rgba(200,80,60,0.9)'},
+    {label:'Day 20',sub:'+ €285 legal',amount:2666,color:'rgba(220,60,40,1)'},
+    {label:'Day 45',sub:'Too late',amount:2666,color:'rgba(230,50,30,1)'},
+  ];
+
+  function draw(ts){
+    if(!startTime)startTime=ts;
+    const elapsed=(ts-startTime)/1000;
+    const W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H);
+    t+=0.016;
+
+    // Background red glow
+    const g=ctx.createRadialGradient(W/2,H*0.4,0,W/2,H*0.4,W*0.55);
+    g.addColorStop(0,'rgba(193,57,43,0.1)');g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+    // Spiral path
+    const cx=W/2,cy=H*0.45;
+    ctx.beginPath();
+    for(let i=0;i<360*3;i++){
+      const ang=i*(Math.PI/180);
+      const rad=20+i*0.18;
+      const px=cx+rad*Math.cos(ang-Math.PI/2);
+      const py=cy+rad*Math.sin(ang-Math.PI/2)*0.6;
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+    ctx.strokeStyle='rgba(193,57,43,0.12)';ctx.lineWidth=1;ctx.stroke();
+
+    // Timeline nodes
+    const positions=[
+      {x:cx+30,y:cy-110},{x:cx+130,y:cy-30},
+      {x:cx+60,y:cy+80},{x:cx-60,y:cy+130}
+    ];
+    nodes.forEach((n,i)=>{
+      const pos=positions[i];
+      const delay=i*0.4;
+      const prog=Math.max(0,Math.min(1,(elapsed-delay)*1.5));
+      if(prog<=0)return;
+
+      // Connector line to next
+      if(i<nodes.length-1){
+        const np=positions[i+1];
+        ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.lineTo(np.x,np.y);
+        ctx.strokeStyle=`rgba(193,57,43,${0.25*prog})`;
+        ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+      }
+
+      // Node circle
+      ctx.beginPath();ctx.arc(pos.x,pos.y,18*prog,0,Math.PI*2);
+      ctx.fillStyle=n.color.replace('0.8',String(0.15*prog));ctx.fill();
+      ctx.strokeStyle=n.color;ctx.lineWidth=1.5;ctx.stroke();
+
+      // Pulse
+      if(prog>0.8){
+        const pr=18+(1-Math.sin(t*2+i))*12;
+        ctx.beginPath();ctx.arc(pos.x,pos.y,pr,0,Math.PI*2);
+        ctx.strokeStyle=n.color.replace(')',`,${0.15*(1-pr/30)})`);ctx.lineWidth=1;ctx.stroke();
+      }
+
+      // Labels
+      ctx.globalAlpha=prog;
+      ctx.fillStyle='rgba(242,236,224,0.9)';
+      ctx.font='bold 11px Syne, sans-serif';ctx.textAlign='center';
+      ctx.fillText(n.label,pos.x,pos.y-26);
+      ctx.font='10px Cormorant Garamond, serif';
+      ctx.fillStyle='rgba(230,150,130,0.8)';
+      ctx.fillText(n.sub,pos.x,pos.y-14);
+
+      // Amount badge
+      if(i>0){
+        ctx.font='bold 13px JetBrains Mono, monospace';
+        ctx.fillStyle='rgba(230,80,60,0.95)';
+        ctx.fillText('€'+n.amount.toLocaleString(),pos.x,pos.y+32);
+      }
+      ctx.globalAlpha=1;
+    });
+
+    // Final total
+    if(elapsed>2){
+      const fa=Math.min(1,(elapsed-2)*1.5);
+      ctx.globalAlpha=fa;
+      ctx.fillStyle='rgba(193,57,43,0.12)';
+      roundRect(ctx,cx-100,cy+170,200,52,8);ctx.fill();
+      ctx.strokeStyle='rgba(193,57,43,0.4)';ctx.lineWidth=1;
+      roundRect(ctx,cx-100,cy+170,200,52,8);ctx.stroke();
+      ctx.fillStyle='rgba(230,140,120,0.7)';
+      ctx.font='10px JetBrains Mono, monospace';ctx.textAlign='center';
+      ctx.fillText('TOTAL OWED',cx,cy+190);
+      ctx.fillStyle='rgba(230,60,40,1)';
+      ctx.font='bold 26px JetBrains Mono, monospace';
+      ctx.fillText('€2,666',cx,cy+214);
+      ctx.globalAlpha=1;
+    }
+
+    raf=requestAnimationFrame(draw);
+  }
+  raf=requestAnimationFrame(draw);
+  return ()=>{cancelAnimationFrame(raf);obs.disconnect()};
+}
+
+// ── Scene 3: Fatima + paper stack ────────────────
+function initV3(){
+  const el=document.getElementById('v3');
+  el.innerHTML='';
+  const c=document.createElement('canvas');
+  el.appendChild(c);
+  const ctx=c.getContext('2d');
+  let raf,t=0;
+  function sz(){c.width=el.offsetWidth;c.height=el.offsetHeight}
+  sz();
+  const obs=new ResizeObserver(sz);obs.observe(el);
+
+  // Papers
+  const papers=Array.from({length:12},(_,i)=>({
+    x:Math.random()*60-30,y:i*8,
+    rot:(Math.random()-0.5)*0.3,
+    w:160+Math.random()*40,h:110+Math.random()*20,
+    shade:0.04+Math.random()*0.04
+  }));
+
+  function draw(){
+    const W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H);
+    t+=0.016;
+
+    // Violet glow
+    const g=ctx.createRadialGradient(W/2,H*0.4,0,W/2,H*0.4,W*0.5);
+    g.addColorStop(0,'rgba(92,79,196,0.09)');g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+    // Paper pile on desk
+    const deskX=W/2,deskY=H*0.62;
+    papers.forEach((p,i)=>{
+      ctx.save();
+      ctx.translate(deskX+p.x,deskY-p.y+Math.sin(t*0.5+i)*1.5);
+      ctx.rotate(p.rot+Math.sin(t*0.3+i)*0.01);
+      ctx.fillStyle=`rgba(240,234,218,${0.06+p.shade})`;
+      ctx.strokeStyle='rgba(240,234,218,0.08)';ctx.lineWidth=0.5;
+      roundRect(ctx,-p.w/2,-p.h/2,p.w,p.h,3);
+      ctx.fill();ctx.stroke();
+      if(i===papers.length-1){
+        // Top paper — urgent
+        ctx.fillStyle='rgba(193,57,43,0.25)';
+        roundRect(ctx,-p.w/2,-p.h/2,p.w,16,{tl:3,tr:3,bl:0,br:0});ctx.fill();
+        ctx.fillStyle='rgba(230,100,80,0.9)';
+        ctx.font='bold 8px JetBrains Mono, monospace';ctx.textAlign='center';
+        ctx.fillText('URGENT',0,-p.h/2+10);
+        // Lines
+        for(let l=0;l<4;l++){
+          ctx.fillStyle='rgba(240,220,200,0.15)';
+          ctx.fillRect(-p.w*0.35,-p.h/2+26+l*14,p.w*0.7,4);
+        }
+      }
+      ctx.restore();
+    });
+
+    // Desk
+    ctx.fillStyle='rgba(30,25,20,0.8)';
+    ctx.fillRect(deskX-200,deskY+35,400,8);
+
+    // Clock (stressed)
+    const clkX=W*0.75,clkY=H*0.28;
+    ctx.beginPath();ctx.arc(clkX,clkY,38,0,Math.PI*2);
+    ctx.fillStyle='rgba(92,79,196,0.08)';ctx.fill();
+    ctx.strokeStyle='rgba(92,79,196,0.35)';ctx.lineWidth=1.5;ctx.stroke();
+    // Clock hands (spinning fast — stressed)
+    const minAng=t*0.8;
+    const hrAng=t*0.067;
+    ctx.strokeStyle='rgba(200,190,255,0.8)';ctx.lineWidth=2;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(clkX,clkY);
+    ctx.lineTo(clkX+Math.sin(minAng)*28,clkY-Math.cos(minAng)*28);ctx.stroke();
+    ctx.strokeStyle='rgba(200,190,255,0.5)';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(clkX,clkY);
+    ctx.lineTo(clkX+Math.sin(hrAng)*20,clkY-Math.cos(hrAng)*20);ctx.stroke();
+    ctx.fillStyle='rgba(200,190,255,0.6)';
+    ctx.font='9px JetBrains Mono, monospace';ctx.textAlign='center';
+    ctx.fillText('47 min / client',clkX,clkY+54);
+
+    // Fatima
+    drawPerson(ctx,W/2,H*0.35,36,'rgba(196,144,106,0.9)','neutral');
+
+    // Waiting queue
+    const qy=H*0.8;
+    for(let i=0;i<4;i++){
+      const alpha=0.3-i*0.05;
+      drawPerson(ctx,W*0.2+i*36,qy,20,`rgba(160,140,120,${alpha})`,'neutral');
+    }
+    ctx.fillStyle='rgba(155,143,232,0.4)';
+    ctx.font='10px Cormorant Garamond, serif';ctx.textAlign='center';
+    ctx.fillText('waiting…',W*0.3,qy+36);
+
+    raf=requestAnimationFrame(draw);
+  }
+  draw();
+  return ()=>{cancelAnimationFrame(raf);obs.disconnect()};
+}
+
+// ── Scene 4: System — three nodes ────────────────
+function initV4(){
+  const el=document.getElementById('v4');
+  el.innerHTML='';
+  const c=document.createElement('canvas');
+  el.appendChild(c);
+  const ctx=c.getContext('2d');
+  let raf,t=0;
+  function sz(){c.width=el.offsetWidth;c.height=el.offsetHeight}
+  sz();
+  const obs=new ResizeObserver(sz);obs.observe(el);
+
+  const nodes2=[
+    {label:'Creditor',emoji:'🏦',color:'rgba(100,160,230,0.8)'},
+    {label:'Emma',emoji:'🧍',color:'rgba(193,57,43,0.9)'},
+    {label:'Municipality',emoji:'🏛',color:'rgba(155,143,232,0.8)'},
+    {label:'Caseworker',emoji:'🧑‍💼',color:'rgba(82,183,136,0.8)'},
+  ];
+  const quotes=[
+    '"She never replied."',
+    '"I would have paid."',
+    '"All preventable."',
+    '"Buried in paper."',
+  ];
+
+  function draw(){
+    const W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H);
+    t+=0.016;
+
+    const cx=W/2,cy=H/2;
+    const R=Math.min(W,H)*0.3;
+
+    // Connection web
+    const positions=nodes2.map((_,i)=>{
+      const ang=(i/nodes2.length)*Math.PI*2-Math.PI/2;
+      return {x:cx+R*Math.cos(ang),y:cy+R*Math.sin(ang)};
+    });
+
+    // Draw lines
+    for(let i=0;i<positions.length;i++){
+      for(let j=i+1;j<positions.length;j++){
+        const pulse=Math.sin(t*1.2+i*0.7+j*0.3)*0.5+0.5;
+        ctx.beginPath();
+        ctx.moveTo(positions[i].x,positions[i].y);
+        ctx.lineTo(positions[j].x,positions[j].y);
+        ctx.strokeStyle=`rgba(193,57,43,${0.06+0.04*pulse})`;
+        ctx.lineWidth=1;ctx.setLineDash([4,6]);ctx.stroke();ctx.setLineDash([]);
+      }
+    }
+
+    // Center — root cause
+    const rs=Math.sin(t)*0.15+0.85;
+    ctx.beginPath();ctx.arc(cx,cy,36*rs,0,Math.PI*2);
+    ctx.fillStyle='rgba(193,57,43,0.08)';ctx.fill();
+    ctx.strokeStyle='rgba(193,57,43,0.4)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='rgba(230,140,120,0.9)';
+    ctx.font='bold 10px Syne, sans-serif';ctx.textAlign='center';
+    ctx.fillText('1 letter',cx,cy-4);
+    ctx.font='9px JetBrains Mono, monospace';
+    ctx.fillStyle='rgba(230,100,80,0.7)';
+    ctx.fillText('confusing',cx,cy+10);
+
+    // Nodes
+    nodes2.forEach((n,i)=>{
+      const p=positions[i];
+      const bob=Math.sin(t*0.8+i)*5;
+
+      // Pulse ring
+      const pr=42+Math.sin(t*1.5+i)*8;
+      ctx.beginPath();ctx.arc(p.x,p.y+bob,pr,0,Math.PI*2);
+      ctx.strokeStyle=n.color.replace('0.8','0.1').replace('0.9','0.1');
+      ctx.lineWidth=1;ctx.stroke();
+
+      // Circle
+      ctx.beginPath();ctx.arc(p.x,p.y+bob,30,0,Math.PI*2);
+      ctx.fillStyle=n.color.replace('0.8','0.1').replace('0.9','0.12');ctx.fill();
+      ctx.strokeStyle=n.color;ctx.lineWidth=1.5;ctx.stroke();
+
+      // Emoji
+      ctx.font='18px sans-serif';ctx.textAlign='center';
+      ctx.fillText(n.emoji,p.x,p.y+bob+6);
+
+      // Label
+      ctx.fillStyle='rgba(242,236,224,0.8)';
+      ctx.font='bold 11px Syne, sans-serif';
+      ctx.fillText(n.label,p.x,p.y+bob+48);
+
+      // Quote bubble
+      const qa=Math.sin(t*0.6+i)*0.15+0.5;
+      ctx.fillStyle=`rgba(242,236,224,${qa*0.08})`;
+      const qw=120,qh=28;
+      const qx=p.x-qw/2,qy=p.y+bob+56;
+      roundRect(ctx,qx,qy,qw,qh,4);ctx.fill();
+      ctx.fillStyle=`rgba(242,236,224,${qa*0.55})`;
+      ctx.font='italic 10px Cormorant Garamond, serif';ctx.textAlign='center';
+      ctx.fillText(quotes[i],p.x,qy+17);
+    });
+
+    // Cost arrows rising
+    const costs=['+ €40','+ €285','+ hours','+ courts'];
+    costs.forEach((c2,i)=>{
+      const p=positions[i];
+      const rise=((t*30+i*60)%120)/120;
+      const ry=p.y-40-rise*80;
+      const ra=Math.sin(rise*Math.PI)*0.6;
+      ctx.fillStyle=`rgba(193,57,43,${ra})`;
+      ctx.font='bold 10px JetBrains Mono, monospace';ctx.textAlign='center';
+      ctx.fillText(c2,p.x+40,ry);
+    });
+
+    raf=requestAnimationFrame(draw);
+  }
+  draw();
+  return ()=>{cancelAnimationFrame(raf);obs.disconnect()};
+}
+
+// ── Scene 5: Transformation animation ────────────
+function initV5(){
+  const el=document.getElementById('v5');
+  el.innerHTML='';
+  const c=document.createElement('canvas');
+  el.appendChild(c);
+  const ctx=c.getContext('2d');
+  let raf,t=0;
+  function sz(){c.width=el.offsetWidth;c.height=el.offsetHeight}
+  sz();
+  const obs=new ResizeObserver(sz);obs.observe(el);
+
+  const personas=[
+    {label:'Debtor',color:'rgba(193,57,43,0.8)',y:0.25},
+    {label:'Caseworker',color:'rgba(155,143,232,0.8)',y:0.42},
+    {label:'Creditor',color:'rgba(100,160,230,0.8)',y:0.59},
+    {label:'Government',color:'rgba(200,190,100,0.8)',y:0.76},
+  ];
+
+  function draw(){
+    const W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H);
+    t+=0.016;
+
+    // Green glow
+    const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.5);
+    g.addColorStop(0,'rgba(82,183,136,0.08)');g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+    // Central tool orb
+    const ox=W/2,oy=H/2;
+    const pulse=Math.sin(t*1.4)*0.12+0.88;
+    // Outer rings
+    [80,60,44].forEach((r,i)=>{
+      const a=Math.sin(t*0.8+i)*0.15+0.08;
+      ctx.beginPath();ctx.arc(ox,oy,r*pulse,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(82,183,136,${a})`;ctx.lineWidth=1;ctx.stroke();
+    });
+    ctx.beginPath();ctx.arc(ox,oy,32,0,Math.PI*2);
+    ctx.fillStyle='rgba(82,183,136,0.12)';ctx.fill();
+    ctx.strokeStyle='rgba(82,183,136,0.6)';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='rgba(82,183,136,0.9)';
+    ctx.font='bold 11px Syne, sans-serif';ctx.textAlign='center';
+    ctx.fillText('AI',ox,oy-3);
+    ctx.font='8px JetBrains Mono, monospace';ctx.fillStyle='rgba(82,183,136,0.6)';
+    ctx.fillText('TOOL',ox,oy+10);
+
+    // Spinning orbit dots
+    for(let i=0;i<6;i++){
+      const ang=t*0.6+i*(Math.PI*2/6);
+      const rx=ox+68*Math.cos(ang),ry=oy+68*Math.sin(ang);
+      ctx.beginPath();ctx.arc(rx,ry,3,0,Math.PI*2);
+      ctx.fillStyle='rgba(82,183,136,0.4)';ctx.fill();
+    }
+
+    // Persona connections
+    personas.forEach((p,i)=>{
+      const px=W*0.82,py=H*p.y;
+      // Animated line
+      const phase=(t*0.5+i*0.8)%(Math.PI*2);
+      const prog=Math.sin(phase)*0.5+0.5;
+
+      // Line from center to persona
+      ctx.beginPath();ctx.moveTo(ox+32,oy);ctx.lineTo(px-28,py);
+      ctx.strokeStyle=p.color.replace('0.8',String(0.15+0.1*prog));
+      ctx.lineWidth=1.5;ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);
+
+      // Moving dot along line
+      const dx=ox+32+(px-28-ox-32)*prog;
+      const dy=oy+(py-oy)*prog;
+      ctx.beginPath();ctx.arc(dx,dy,3,0,Math.PI*2);
+      ctx.fillStyle=p.color;ctx.fill();
+
+      // Persona circle
+      ctx.beginPath();ctx.arc(px,py,22,0,Math.PI*2);
+      ctx.fillStyle=p.color.replace('0.8','0.1');ctx.fill();
+      ctx.strokeStyle=p.color;ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle='rgba(242,236,224,0.8)';
+      ctx.font='bold 9px Syne, sans-serif';ctx.textAlign='center';
+      ctx.fillText(p.label,px,py+38);
+
+      // Check marks
+      ctx.strokeStyle=p.color;ctx.lineWidth=2;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(px-8,py);ctx.lineTo(px-2,py+7);ctx.lineTo(px+9,py-6);ctx.stroke();
+    });
+
+    // Before letter (left)
+    const bx=W*0.12,by=H*0.38;
+    ctx.fillStyle='rgba(193,57,43,0.06)';
+    ctx.strokeStyle='rgba(193,57,43,0.3)';ctx.lineWidth=1;
+    roundRect(ctx,bx-50,by-60,100,120,6);ctx.fill();ctx.stroke();
+    ctx.fillStyle='rgba(193,57,43,0.2)';
+    roundRect(ctx,bx-50,by-60,100,16,{tl:6,tr:6,bl:0,br:0});ctx.fill();
+    for(let l=0;l<5;l++){
+      const alpha=l===1||l===3?0.4:0.15;
+      ctx.fillStyle=`rgba(193,57,43,${alpha})`;
+      ctx.fillRect(bx-38,by-36+l*14,76*(0.5+Math.random()*0.4),5);
+    }
+    ctx.fillStyle='rgba(230,100,80,0.7)';
+    ctx.font='9px JetBrains Mono, monospace';ctx.textAlign='center';
+    ctx.fillText('CONFUSING',bx,by+72);
+
+    // Arrow to center
+    ctx.beginPath();ctx.moveTo(bx+55,by);ctx.lineTo(ox-36,oy);
+    ctx.strokeStyle='rgba(82,183,136,0.3)';ctx.lineWidth=1.5;
+    ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+
+    raf=requestAnimationFrame(draw);
+  }
+  draw();
+  return ()=>{cancelAnimationFrame(raf);obs.disconnect()};
+}
+
+// ── Scene 6: Happy ending ─────────────────────────
+function initV6(){
+  const el=document.getElementById('v6');
+  el.innerHTML='';
+  const c=document.createElement('canvas');
+  el.appendChild(c);
+  const ctx=c.getContext('2d');
+  let raf,t=0,startTime=null;
+  function sz(){c.width=el.offsetWidth;c.height=el.offsetHeight}
+  sz();
+  const obs=new ResizeObserver(sz);obs.observe(el);
+
+  // Confetti particles
+  const confetti=Array.from({length:60},()=>({
+    x:Math.random()*800,y:Math.random()*-200-50,
+    vx:(Math.random()-0.5)*1.5,vy:Math.random()*2+0.5,
+    r:Math.random()*5+2,rot:Math.random()*Math.PI*2,
+    rotV:(Math.random()-0.5)*0.1,
+    color:`hsl(${Math.random()*80+120},60%,60%)`
+  }));
+
+  function draw(ts){
+    if(!startTime)startTime=ts;
+    const elapsed=(ts-startTime)/1000;
+    const W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H);
+    t+=0.016;
+
+    // Dawn glow
+    const g=ctx.createRadialGradient(W/2,H*0.3,0,W/2,H*0.3,W*0.6);
+    g.addColorStop(0,'rgba(82,183,136,0.12)');
+    g.addColorStop(0.5,'rgba(82,183,136,0.04)');
+    g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+    // Light rays
+    for(let i=0;i<7;i++){
+      const ang=(-0.5+i*0.18)*Math.PI/2;
+      const a=Math.sin(t*0.5+i)*0.03+0.04;
+      ctx.beginPath();ctx.moveTo(W/2,H*0.05);
+      ctx.lineTo(W/2+Math.cos(ang)*W,H*0.05+Math.sin(ang)*H);
+      ctx.strokeStyle=`rgba(82,183,136,${a})`;ctx.lineWidth=30;ctx.stroke();
+    }
+
+    // Confetti
+    confetti.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.rot+=p.rotV;
+      if(p.y>H+20){p.y=-20;p.x=Math.random()*W;}
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+      ctx.fillStyle=p.color;
+      ctx.globalAlpha=0.7;
+      ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r);
+      ctx.restore();ctx.globalAlpha=1;
+    });
+
+    // Emma happy (larger)
+    const ex=W*0.3,ey=H*0.45;
+    drawPerson(ctx,ex,ey,44,'rgba(210,160,120,0.95)','happy');
+    // checkmark
+    ctx.beginPath();ctx.arc(ex+40,ey-48,16,0,Math.PI*2);
+    ctx.fillStyle='rgba(82,183,136,0.85)';ctx.fill();
+    ctx.strokeStyle='white';ctx.lineWidth=2.5;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(ex+32,ey-48);ctx.lineTo(ex+39,ey-40);ctx.lineTo(ex+50,ey-58);ctx.stroke();
+    ctx.fillStyle='rgba(200,240,220,0.7)';
+    ctx.font='12px Cormorant Garamond, serif';ctx.textAlign='center';
+    ctx.fillText('Emma',ex,ey+70);
+
+    // Fatima happy (larger)
+    const fx=W*0.65,fy=H*0.45;
+    drawPerson(ctx,fx,fy,44,'rgba(196,144,106,0.95)','happy');
+    ctx.beginPath();ctx.arc(fx+40,fy-48,16,0,Math.PI*2);
+    ctx.fillStyle='rgba(82,183,136,0.85)';ctx.fill();
+    ctx.strokeStyle='white';ctx.lineWidth=2.5;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(fx+32,fy-48);ctx.lineTo(fx+39,fy-40);ctx.lineTo(fx+50,fy-58);ctx.stroke();
+    ctx.fillStyle='rgba(200,240,220,0.7)';
+    ctx.font='12px Cormorant Garamond, serif';ctx.textAlign='center';
+    ctx.fillText('Fatima',fx,fy+70);
+
+    // Debt comparison
+    const cpa=Math.min(1,(elapsed-0.5)*1.5);
+    if(cpa>0){
+      ctx.globalAlpha=cpa;
+      // Without
+      ctx.fillStyle='rgba(193,57,43,0.08)';
+      roundRect(ctx,W*0.1,H*0.75,W*0.35,60,6);ctx.fill();
+      ctx.strokeStyle='rgba(193,57,43,0.25)';ctx.lineWidth=1;
+      roundRect(ctx,W*0.1,H*0.75,W*0.35,60,6);ctx.stroke();
+      ctx.fillStyle='rgba(230,130,110,0.6)';
+      ctx.font='9px JetBrains Mono, monospace';ctx.textAlign='center';
+      ctx.fillText('WITHOUT TOOL',W*0.275,H*0.75+18);
+      ctx.font='bold 22px JetBrains Mono, monospace';
+      ctx.fillStyle='rgba(230,80,60,0.9)';
+      ctx.fillText('€2,666',W*0.275,H*0.75+42);
+
+      // With
+      ctx.fillStyle='rgba(82,183,136,0.1)';
+      roundRect(ctx,W*0.55,H*0.75,W*0.35,60,6);ctx.fill();
+      ctx.strokeStyle='rgba(82,183,136,0.35)';
+      roundRect(ctx,W*0.55,H*0.75,W*0.35,60,6);ctx.stroke();
+      ctx.fillStyle='rgba(100,200,150,0.6)';
+      ctx.font='9px JetBrains Mono, monospace';ctx.textAlign='center';
+      ctx.fillText('WITH TOOL',W*0.725,H*0.75+18);
+      ctx.font='bold 22px JetBrains Mono, monospace';
+      ctx.fillStyle='rgba(82,183,136,0.95)';
+      ctx.fillText('€2,341',W*0.725,H*0.75+42);
+
+      ctx.globalAlpha=1;
+      ctx.fillStyle='rgba(82,183,136,0.5)';
+      ctx.font='11px Syne, sans-serif';ctx.textAlign='center';
+      ctx.fillText('€325 saved · no lawyers · no courts · no stress',W/2,H*0.75+76);
+    }
+
+    raf=requestAnimationFrame(draw);
+  }
+  raf=requestAnimationFrame(draw);
+  return ()=>{cancelAnimationFrame(raf);obs.disconnect()};
+}
+
+// ─── SHARED HELPERS ─────────────────────────────
+function drawPerson(ctx,x,y,r,skinColor,mood){
+  // Body
+  ctx.fillStyle=skinColor.replace('0.9','0.7').replace('0.95','0.7');
+  ctx.beginPath();ctx.ellipse(x,y+r*1.8,r*0.7,r*0.9,0,0,Math.PI*2);ctx.fill();
+  // Head
+  ctx.fillStyle=skinColor;
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  // Hair
+  ctx.fillStyle='rgba(50,30,15,0.8)';
+  ctx.beginPath();ctx.ellipse(x,y-r*0.5,r,r*0.55,0,0,Math.PI*2);ctx.fill();
+  // Eyes
+  ctx.fillStyle='white';
+  ctx.beginPath();ctx.ellipse(x-r*0.3,y-r*0.05,r*0.18,r*0.22,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(x+r*0.3,y-r*0.05,r*0.18,r*0.22,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(30,15,5,0.9)';
+  ctx.beginPath();ctx.arc(x-r*0.3,y,r*0.12,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(x+r*0.3,y,r*0.12,0,Math.PI*2);ctx.fill();
+  // Mouth
+  ctx.strokeStyle='rgba(100,50,20,0.8)';ctx.lineWidth=r*0.06;ctx.lineCap='round';
+  if(mood==='happy'){
+    ctx.beginPath();ctx.arc(x,y+r*0.1,r*0.35,0.2,Math.PI-0.2);ctx.stroke();
+  } else if(mood==='worried'){
+    ctx.beginPath();ctx.arc(x,y+r*0.5,r*0.3,Math.PI+0.3,Math.PI*2-0.3);ctx.stroke();
+  } else {
+    ctx.beginPath();ctx.moveTo(x-r*0.25,y+r*0.35);ctx.lineTo(x+r*0.25,y+r*0.35);ctx.stroke();
+  }
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  if(typeof r==='number'){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath();
+  } else {
+    const {tl=0,tr=0,bl=0,br=0}=r;
+    ctx.beginPath();
+    ctx.moveTo(x+tl,y);
+    ctx.lineTo(x+w-tr,y);ctx.quadraticCurveTo(x+w,y,x+w,y+tr);
+    ctx.lineTo(x+w,y+h-br);ctx.quadraticCurveTo(x+w,y+h,x+w-br,y+h);
+    ctx.lineTo(x+bl,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-bl);
+    ctx.lineTo(x,y+tl);ctx.quadraticCurveTo(x,y,x+tl,y);
+    ctx.closePath();
+  }
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION + SCENE MANAGEMENT
+// ═══════════════════════════════════════════════
+const TOTAL=7;
+let cur=0;
+let cleanups={};
+
+const inits={1:initV1,2:initV2,3:initV3,4:initV4,5:initV5,6:initV6};
+
+// Build pips
+const pipsEl=document.getElementById('pips');
+for(let i=0;i<TOTAL;i++){
+  const p=document.createElement('div');
+  p.className='pip '+(i===0?'cur':'upcoming');
+  p.title='Chapter '+(i+1);
+  p.onclick=()=>goTo(i);
+  pipsEl.appendChild(p);
+}
+
+function updateUI(){
+  document.getElementById('btnB').disabled=cur===0;
+  const pips=pipsEl.children;
+  for(let i=0;i<TOTAL;i++){
+    pips[i].className='pip '+(i<cur?'done':i===cur?'cur':'upcoming');
+  }
+  // Progress line
+  document.getElementById('progline').style.width=((cur/(TOTAL-1))*100)+'%';
+  // Next button icon
+  const nb=document.getElementById('btnN');
+  if(cur===TOTAL-1){
+    nb.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13V3M3 8l5-5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    nb.title='Back to start';
+  } else {
+    nb.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    nb.title='Next';
+  }
+}
+
+function goTo(n){
+  if(n<0||n>=TOTAL)return;
+  if(n===TOTAL&&cur===TOTAL-1){n=0;}
+  if(n===cur)return;
+
+  // Cleanup old canvas
+  if(cleanups[cur]){cleanups[cur]();delete cleanups[cur];}
+
+  document.getElementById('s'+cur).classList.remove('active');
+  cur=n===TOTAL?0:n;
+  document.getElementById('s'+cur).classList.add('active');
+
+  // Init new canvas
+  if(inits[cur]){cleanups[cur]=inits[cur]();}
+
+  updateUI();
+}
+
+// Handle last scene restart
+document.getElementById('btnN').addEventListener('click',()=>{
+  if(cur===TOTAL-1)goTo(0);else goTo(cur+1);
+});
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();
+    if(cur===TOTAL-1)goTo(0);else goTo(cur+1);}
+  if(e.key==='ArrowLeft')goTo(cur-1);
+  if(e.key==='Escape')goTo(0);
+});
+
+// Touch swipe
+let tx0=null;
+document.addEventListener('touchstart',e=>tx0=e.touches[0].clientX,{passive:true});
+document.addEventListener('touchend',e=>{
+  if(tx0===null)return;
+  const dx=e.changedTouches[0].clientX-tx0;
+  if(Math.abs(dx)>60){dx<0?goTo(cur+1):goTo(cur-1);}
+  tx0=null;
+},{passive:true});
+
+updateUI();
+</script>
+</body>
+</html>
